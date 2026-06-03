@@ -1,0 +1,120 @@
+# =====================================================================
+# Sport Data Solution — POC Avantages Sportifs
+# Stack locale : PostgreSQL 16 + Kestra 0.19
+# Démarrage : docker compose up -d --build
+# Reset complet : docker compose down -v && docker compose up -d --build
+# =====================================================================
+
+services:
+
+  # --- Base de données ---------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: sds_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # --- Orchestrateur ----------------------------------------------------
+  # Kestra utilise SA PROPRE base postgres (séparation des préoccupations).
+  kestra-db:
+    image: postgres:16-alpine
+    container_name: sds_kestra_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kestra
+      POSTGRES_USER: kestra
+      POSTGRES_PASSWORD: kestra
+    volumes:
+      - kestra_db_data:/var/lib/postgresql/data
+
+  kestra:
+    # Image custom : deps Python runtime pré-installées (cf. kestra/Dockerfile).
+    # Évite de réinstaller les paquets à chaque run / recreate.
+    build:
+      context: .
+      dockerfile: kestra/Dockerfile
+    image: sds-kestra:local
+    container_name: sds_kestra
+    restart: unless-stopped
+    user: "root"
+    command: server standalone
+    depends_on:
+      kestra-db:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    # Limite mémoire du conteneur + heap JVM explicite.
+    # Kestra standalone (webserver+scheduler+worker+executor) a besoin de
+    # plus que les ~25% de RAM alloués par défaut, sinon OutOfMemoryError.
+    mem_limit: 4g
+    environment:
+      JAVA_OPTS: "-Xms1g -Xmx3g"
+      KESTRA_CONFIGURATION: |
+        datasources:
+          postgres:
+            url: jdbc:postgresql://kestra-db:5432/kestra
+            driverClassName: org.postgresql.Driver
+            username: kestra
+            password: kestra
+        kestra:
+          server:
+            basicAuth:
+              enabled: false
+          repository:
+            type: postgres
+          storage:
+            type: local
+            local:
+              basePath: /app/storage
+          queue:
+            type: postgres
+          tasks:
+            tmpDir:
+              path: /tmp/kestra-wd/tmp
+      # Secrets propagés au flow via Kestra `secret('X')`.
+      # Kestra v0.19 exige des valeurs encodées en BASE64 (sinon secret() vide).
+      # Les variantes *_B64 sont générées dans .env à partir des valeurs en clair.
+      SECRET_GOOGLE_MAPS_API_KEY: ${SECRET_GOOGLE_MAPS_API_KEY_B64}
+      SECRET_SLACK_WEBHOOK_URL: ${SECRET_SLACK_WEBHOOK_URL_B64}
+      SECRET_DB_PASSWORD: ${SECRET_DB_PASSWORD_B64}
+      SECRET_PII_HASH_SALT: ${SECRET_PII_HASH_SALT_B64}
+    ports:
+      - "8080:8080"
+    volumes:
+      - kestra_data:/app/storage
+      - ./flows:/app/flows:ro
+      - ./src:/app/src:ro
+      - ./sql:/app/sql:ro
+      - ./data:/app/data
+      # NB : pas de montage de /var/run/docker.sock. Les tâches utilisent le
+      # Process runner (dans ce conteneur), pas le Docker runner. Monter le
+      # socket Docker donnerait un accès root à l'hôte = risque d'évasion.
+
+  # --- Service one-shot : importe le flow Kestra au démarrage ----------
+  kestra-init:
+    image: curlimages/curl:8.6.0
+    container_name: sds_kestra_init
+    depends_on:
+      - kestra
+    volumes:
+      - ./flows:/flows:ro
+      - ./scripts/kestra-init.sh:/init/kestra-init.sh:ro
+    entrypoint: ["/bin/sh", "/init/kestra-init.sh"]
+
+volumes:
+  pg_data:
+  kestra_db_data:
+  kestra_data:

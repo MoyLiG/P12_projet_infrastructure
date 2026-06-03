@@ -1,0 +1,185 @@
+Vous êtes data engineer chez Sport Data Solution qui est une start-up fondée par 2 sportifs :
+
+Alexandre : Leader du groupe de vélo de route “les semis croustillants” et cofondateur de l’entreprise.
+
+Juliette : Marathonienne convaincue et cofondatrice de l’entreprise.
+
+L’activité de l’entreprise se concentre sur le développement de solutions de monitoring et d’analyse de performance, pour des sportifs amateurs et semi-professionnels.
+
+ 
+
+Juliette, la cofondatrice de l’entreprise, est fermement convaincue que l’adoption d’un mode de vie actif et sain est un atout non seulement pour la performance individuelle mais aussi pour la dynamique collective au sein de l’entreprise. 
+
+ 
+
+Elle souhaite ainsi intégrer davantage l’aspect sportif dans la culture d'entreprise, en incitant tous les employés à pratiquer une activité physique régulière. 
+
+ 
+
+Dans cette optique, elle envisage de mettre en place un système d’avantages et de récompenses pour les salariés qui s'engagent dans des pratiques sportives régulières. L’objectif est de créer un environnement de travail qui valorise l’équilibre entre performance professionnelle et bien-être personnel, tout en renforçant l’esprit d’équipe et la santé de chacun.
+
+ 
+
+Étant vous aussi un grand fan de sport, vous vous êtes proposé pour mener à bien cette mission. Vous êtes maintenant en charge du POC du projet avec la mise en place du pipeline de bout en bout : création, extraction, transformation, chargement, tests de qualité et monitoring continu.
+
+ 
+
+Vous recevez un e-mail de Juliette, qui cadre la mission :
+
+ 
+
+De : Juliette
+
+À :  Moi 
+
+Objet : Avantages sportifs
+
+Bonjour !
+
+ 
+
+J’espère que tu vas bien ! Comme discuté tout à l’heure, après avoir mis en place un système de récompense pour les employés qui prennent des actions concrètes pour l'environnement, nous souhaitons maintenant récompenser les sportifs et encourager la pratique du sport par tous. Je souhaite proposer à l’ensemble des collaborateurs des avantages s'ils ont une pratique du sport régulière. Je t’ai ajouté les fichiers en pièces jointes. 
+
+Pour cela, je souhaite qu’on lance un POC de la solution avant de l’annoncer.
+
+ 
+
+Ce POC vise à : 
+
+Tester la faisabilité de la solution
+
+Comprendre quelles données nous allons recueillir chez les salariés
+
+Calculer l’impact financier pour l’entreprise de ces avantages supplémentaires. 
+
+ 
+
+Dans un premier temps, j’ai pensé a 2 avantages possibles : 
+
+Une prime : Chaque salarié venant au bureau en faisant du sport (vélo, trottinette, course à pied, marche, etc.) bénéficiera d’une prime de 5% sur son salaire annuel brut. 
+
+5 journées “bien-être” par an : Tous les salariés qui ont une activité physique soutenue à côté de leur travail peuvent prétendre à 5 jours de “bien-être” pour la pratique de leur sport et améliorer leur récupération. 
+
+ 
+
+Nous souhaitons que chaque activité physique crée automatiquement une publication dans le channel slack associé pour favoriser l’émulation entre les salariés.
+
+ 
+
+Pour les deux options ci-dessus, les salariés doivent remplir certaines conditions détaillées dans la note de cadrage également en pièce jointe. 
+
+ 
+
+Pour la partie technique, tu es libre d’utiliser les outils que tu préfères, l’essentiel c’est que l’ensemble du projet soit robuste, sécurisé et fonctionnel. 
+
+ 
+
+Concernant la restitution du projet, pourras-tu : 
+
+présenter à l’aide d’un support, l’ensemble de ta solution (architecture, pipeline des données, monitoring, etc.) en justifiant tes choix ? 
+
+réaliser une démonstration live de ta solution. 
+
+présenter un rapport PowerBI avec les principaux indicateurs. Pense à permettre de relancer l’historique des indicateurs si jamais une source est modifiée (nous ne sommes pas à l’abri d’une modification du taux ou des données entrantes).
+
+ 
+
+N’hésite pas à me tenir au courant de ton avancement ou à me poser des questions si tu bloques sur certains points. 
+
+ 
+
+Merci et bon courage !
+
+ 
+
+Juliette
+
+Co-Fondatrice – Sport Data Solution
+
+Ps : Comme d’habitude, si tu vois des choses pertinentes à ajouter tu es également libre de le faire.
+
+Données RH
+Données sportives
+
+Note de cadrage
+
+Compétences
+
+Livrables
+
+Concevoir un système de suivi des flux de données pour valider en continu leur intégration
+
+Support de présentation rédigé au format pdf (pas de nombre de pages imposé).
+
+ 
+
+ et
+
+ 
+
+Fichier PowerBI (ou équivalent) pour la visualisation des résultats.
+
+ 
+
+(Démonstration en live pendant la soutenance)
+
+Ajuster les requêtes et les paramétrages des pipelines
+
+
+Mettre en place un pipeline de données automatisé et adapté au besoin
+
+Lien vers le GitHub avec l’ensemble du code du projet
+
+Veuillez préciser dans le titre du projet “Option A” ou “Option B”. 
+Déposez sur la plateforme, dans un dossier zip nommé “Titre_du_projet_(Option A / Option B) nom_prénom”, tous les livrables du projet comme suit :
+Nom_Prénom_n° du livrable_nom du livrable_date de démarrage du projet  :  
+
+Nom_Prénom_Option_A / Option_B_1_support_mmaaaa ;
+
+Nom_Prénom_Option_A / Option_B_2_lien_mmaaaa ;
+
+Par exemple, le premier livrable peut être nommé comme suit : Dupont_Jean_Option_Option A_1_support_012025 ou Dupont_Jean_Option_B_1_support_012025
+
+Soutenance 
+Barre
+
+ 
+
+Durant la présentation orale, dans le cadre de l’option A, l’évaluateur ne jouera aucun rôle.
+
+ 
+
+Dans le cadre de l’option B, l’évaluateur interprétera le rôle de Juliette. 
+
+ 
+
+La soutenance dure 30 minutes et sera structurée de la manière suivante :
+
+Présentation des livrables (15 minutes)
+
+Vous présenterez votre support de présentation contenant l’ensemble des choix techniques que vous avez faits pour mener à bien le projet.
+
+Vous ferez une également une démonstration en live de votre solution
+
+en changeant les paramètres (pourcentage de la prime) afin de montrer l’évolution
+
+en insérant une nouvelle course que l’on devra visualiser dans Slack et dans le reporting final.
+
+Discussion (10 minutes) 
+
+L’évaluateur vous challengera sur les points suivants :
+
+Pertinence des différents outils que vous avez utilisés ?
+
+Choix de la solution par rapport aux défis techniques ?
+
+Scalabilité de la solution ?
+
+Qualité des flux de données ?
+
+Débrief (5 minutes)
+
+À la fin de la soutenance, vous aurez 5 minutes pour débriefer avec l'évaluateur. Dans le cas de l’option B, il arrêtera de jouer le rôle de Juliette pour le débrief.
+
+Pour avoir plus de détails sur comment préparer votre soutenance, lisez cet article qui donne de nombreuses recommandations.
+Votre présentation devrait durer 15 minutes (+/- 5 minutes). Puisque le respect des durées des présentations est important en milieu professionnel, les présentations en dessous de 10 minutes ou au-dessus de 20 minutes peuvent être refusées. 

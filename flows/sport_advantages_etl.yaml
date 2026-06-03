@@ -1,0 +1,175 @@
+id: sport_advantages_etl
+namespace: company.sport_data
+description: |
+  Pipeline POC Sport Data Solution — Avantages Sportifs.
+  Extraction RH + sport + génération activités → validation géo + qualité →
+  calcul prime + jours bien-être → notifications Slack.
+
+  Exécution en Process runner : les tâches tournent dans le conteneur Kestra
+  où le code (/app/src), les données (/app/data) et la base (hostname
+  "postgres", même réseau Docker) sont accessibles.
+
+# Paramètres exposés au moment du run (UI Kestra ou API).
+# Modifiables sans toucher au code → exigence "démo live" de la consigne.
+inputs:
+  - id: prime_rate
+    type: FLOAT
+    defaults: 0.05
+    description: Taux de prime appliqué au salaire annuel brut (5 % par défaut).
+  - id: wellbeing_threshold
+    type: INT
+    defaults: 15
+    description: Nombre minimum d'activités/an pour les 5 jours bien-être.
+  - id: rh_xlsx_path
+    type: STRING
+    defaults: /app/data/raw/donnees_rh.xlsx
+  - id: sport_xlsx_path
+    type: STRING
+    defaults: /app/data/raw/donnees_sportive.xlsx
+  - id: slack_post_limit
+    type: INT
+    defaults: 10
+    description: Plafond de messages Slack postés par run (évite le flood).
+
+# Variables d'environnement communes à toutes les tâches.
+# pluginDefaults applique le même bloc env + taskRunner à chaque tâche Python.
+pluginDefaults:
+  - type: io.kestra.plugin.scripts.python.Commands
+    # forced: true -> écrase le taskRunner Docker par défaut du plugin.
+    # Sans ça, les tâches tournent en conteneur isolé sans /app monté.
+    forced: true
+    values:
+      taskRunner:
+        type: io.kestra.plugin.core.runner.Process
+      # Ne pas élever l'exécution en WARNING sur simple sortie stderr
+      # (barres de progression Great Expectations, notices pip). Les vraies
+      # erreurs lèvent une exception Python -> exit code != 0 -> FAILED.
+      warningOnStdErr: false
+      env:
+        PYTHONPATH: /app
+        POSTGRES_HOST: postgres
+        POSTGRES_PORT: "5432"
+        POSTGRES_DB: sport_data
+        POSTGRES_USER: etl_writer
+        POSTGRES_PASSWORD: "{{ secret('DB_PASSWORD') }}"
+        PII_HASH_SALT: "{{ secret('PII_HASH_SALT') }}"
+        GOOGLE_MAPS_API_KEY: "{{ secret('GOOGLE_MAPS_API_KEY') }}"
+        SLACK_WEBHOOK_URL: "{{ secret('SLACK_WEBHOOK_URL') }}"
+        SLACK_CHANNEL: "#tous-sport-data-solution"
+        KESTRA_EXECUTION_ID: "{{ execution.id }}"
+
+tasks:
+
+  - id: extract_rh
+    type: io.kestra.plugin.scripts.python.Commands
+    # Plus de pip install : les deps sont dans l'image sds-kestra:local.
+    # Retry exponentiel Kestra : absorbe une indispo transitoire de Postgres
+    # (ex. redémarrage du conteneur) au-delà du pool_pre_ping SQLAlchemy.
+    retry:
+      type: exponential
+      maxAttempt: 3
+      interval: PT10S
+      maxInterval: PT2M
+      delayFactor: 2.0
+    commands:
+      - cd /app && python -m src.extract.rh "{{ inputs.rh_xlsx_path }}"
+
+  # Test visible : la RH doit être chargée avant d'aller plus loin.
+  - id: test_employees_loaded
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - cd /app && python -m src.validate.checks employees_loaded
+
+  - id: extract_sport
+    type: io.kestra.plugin.scripts.python.Commands
+    retry:
+      type: exponential
+      maxAttempt: 3
+      interval: PT10S
+      maxInterval: PT2M
+      delayFactor: 2.0
+    commands:
+      - cd /app && python -m src.extract.sport "{{ inputs.sport_xlsx_path }}"
+
+  # Test visible : les pratiques sportives déclarées sont chargées.
+  - id: test_sports_practice_loaded
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - cd /app && python -m src.validate.checks sports_practice_loaded
+
+  - id: generate_activities
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - cd /app && python -m src.generate.activities
+
+  # Test visible : volumétrie d'activités générée + aucune date dans le futur.
+  - id: test_activities_generated
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - cd /app && python -m src.validate.checks activities_generated
+
+  - id: validate_geo
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - cd /app && python -m src.validate.geo
+
+  - id: validate_quality
+    type: io.kestra.plugin.scripts.python.Commands
+    # Le rapport JSON Great Expectations est exposé en outputFile : il devient
+    # téléchargeable depuis l'onglet Outputs de l'exécution dans l'UI Kestra.
+    # $OLDPWD = répertoire de travail Kestra (positionné avant le `cd /app`).
+    outputFiles:
+      - ge_report.json
+    commands:
+      - cd /app && python -m src.validate.quality --out "$OLDPWD/ge_report.json"
+
+  - id: compute_advantages
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - >-
+        cd /app && python -m src.transform.advantages
+        --prime-rate {{ inputs.prime_rate }}
+        --wellbeing-threshold {{ inputs.wellbeing_threshold }}
+
+  # Test visible : une ligne d'éligibilité par salarié (prime + bien-être).
+  - id: test_advantages_computed
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - cd /app && python -m src.validate.checks advantages_computed
+
+  - id: post_slack
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - cd /app && python -m src.load.slack --limit {{ inputs.slack_post_limit }}
+
+# ----- Trigger récurrent (le 1er du mois à 9h) -------------------------
+triggers:
+  - id: monthly_run
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 9 1 * *"
+    # Sans timezone, Kestra planifie en UTC (= 11h Paris l'été). On force Paris.
+    timezone: Europe/Paris
+    inputs:
+      prime_rate: 0.05
+      wellbeing_threshold: 15
+
+# ----- Gestion des erreurs : alerte loggée sur tout échec --------------
+errors:
+  - id: log_failure
+    type: io.kestra.plugin.core.log.Log
+    message: |
+      ❌ Pipeline sport_advantages_etl en échec.
+      Execution : {{ execution.id }}
+      Params : prime={{ inputs.prime_rate }}, seuil={{ inputs.wellbeing_threshold }}
+      Voir audit.run_log pour le détail du step en cause.
+
+  # Alerte réelle : notifie la channel Slack en cas d'échec (pas seulement un
+  # log). Même webhook que pour les messages d'activité (secret partagé).
+  - id: alert_slack
+    type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+    url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+    payload: |
+      {
+        "channel": "#tous-sport-data-solution",
+        "text": ":x: *Pipeline sport_advantages_etl en échec*\nExécution `{{ execution.id }}` — prime={{ inputs.prime_rate }}, seuil={{ inputs.wellbeing_threshold }}.\nVoir l'UI Kestra et `audit.run_log` pour le step en cause."
+      }

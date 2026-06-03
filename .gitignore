@@ -1,0 +1,50 @@
+# --- Secrets ---
+.env
+.env.local
+*.pem
+*.key
+
+# --- Données sensibles (PII RH) ---
+data/raw/*.xlsx
+data/raw/*.csv
+data/*.xlsx
+data/generated/*.csv
+data/generated/*.json
+
+# --- Locks bureautique (LibreOffice / Word ouverts) ---
+.~lock.*#
+
+# --- PowerBI lourd ---
+powerbi/*.pbix.backup
+powerbi/cache/
+
+# --- Sorties Great Expectations ---
+data/ge_docs/
+src/validate/ge_suite/uncommitted/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- Docker volumes (jamais en local en git) ---
+volumes/
+pg_data/
+kestra_data/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/
