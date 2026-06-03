@@ -144,14 +144,14 @@ debug, moins de logs d'install) sur toutes les sessions suivantes.
 
 ---
 
-## 2026-06-03 — 5 améliorations du flow (inspirées de la comparaison avec P10)
+## 2026-06-03 — 5 améliorations du flow
 
-Suite à la relecture croisée P10↔P12, 5 manques comblés dans
+Suite à une relecture critique du flow, 5 manques comblés dans
 `flows/sport_advantages_etl.yaml` (+ `src/validate/checks.py`, `quality.py`) :
 
 1. **Alerte réelle dans `errors:`** — avant, seul un `Log` se déclenchait sur
    échec (personne n'était notifié). Ajout d'un `SlackIncomingWebhook` qui
-   poste dans #tous-sport-data-solution. P10 avait déjà ce réflexe (MailSend).
+   poste dans #tous-sport-data-solution.
 2. **`timezone: Europe/Paris`** sur le trigger Schedule — sans timezone, Kestra
    planifie en **UTC** (9h UTC = 11h Paris l'été). Toujours fixer la timezone.
 3. **`retry` exponentiel Kestra** sur `extract_rh`/`extract_sport` — le retry
@@ -162,7 +162,7 @@ Suite à la relecture croisée P10↔P12, 5 manques comblés dans
 5. **Tests en tâches Kestra visibles** — nouveau module `src/validate/checks.py`
    (employees_loaded / sports_practice_loaded / activities_generated /
    advantages_computed), intercalé en tâches dédiées (vertes/rouges dans l'UI,
-   tracées dans audit.run_log via `step`). Pattern repris de P10.
+   tracées dans audit.run_log via `step`).
 
 **Vérifié** : PUT du flow = 200 (plugins/retry/timezone validés), puis run réel
 déclenché → **SUCCESS 11/11 tâches**, les 4 tests verts, `outputFiles=['ge_report.json']`.

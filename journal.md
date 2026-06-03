@@ -32,13 +32,13 @@ ses 162 salariés. Données fournies : 2 XLSX (RH + pratique sportive). À gén�
      - *Debezium + Kafka + Spark + Delta* (l'archi exemple du PDF) :
        surdimensionnée. L'objectif d'un POC c'est de prouver la faisabilité, pas
        de déployer du big data sur un dataset de 162 lignes.
-     - *DuckDB* (utilisé en P10) : pas multi-utilisateur, pas de rôles, pas de
-       RLS. Ne convient pas à des données RH sensibles.
+     - *DuckDB* : pas multi-utilisateur, pas de rôles, pas de RLS. Ne convient
+       pas à des données RH sensibles.
    - **Pourquoi PG** : rôles + Row Level Security + chiffrement at-rest + audit
      log natifs. Standard attendu sur le marché Data Engineering.
-   - **Pourquoi Kestra** : déjà mis en place en P10, donc ramp-up court. Flow YAML
-     versionné, UI de monitoring claire, support du *replay* explicitement
-     demandé par Juliette dans le brief.
+   - **Pourquoi Kestra** : orchestrateur déclaratif (flow YAML versionné, pas de
+     DAG Python à maintenir), UI de monitoring claire, support du *replay*
+     explicitement demandé par Juliette dans le brief.
 
 3. **Services externes réels** (pas de mocks complets) :
    - Google Maps Distance Matrix API (clé gratuite, 162 appels = quasi 0 €).

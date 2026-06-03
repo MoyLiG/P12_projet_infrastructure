@@ -1,8 +1,8 @@
 """
-Générateur d'activités sportives (Strava-like).
+Générateur d'activités sportives au format de l'API Strava.
 
 Spec :
-- Crée ~settings.activities_total lignes sur les 12 derniers mois.
+- Crée ~settings.activities_total enregistrements sur les 12 derniers mois.
 - Chaque salarié ayant une `sport_pratique` reçoit un nombre d'activités
   tiré d'une loi de Poisson centrée sur 25/an → distribution réaliste
   (certains salariés autour de 5, d'autres autour de 50).
@@ -10,24 +10,41 @@ Spec :
 - Distance et durée tirées de distributions par sport (cf. SPORT_PROFILES).
 - Seed fixe (settings.activities_seed) → reproductibilité totale.
 
+Pourquoi produire un payload "façon API Strava" plutôt que des colonnes plates ?
+→ La couche `raw` reflète ce qu'une source tierce renverrait réellement
+  (JSON imbriqué : `athlete`, `moving_time` ≠ `elapsed_time`, `start_date`
+  vs `start_date_local`…). Le pipeline aplatit ensuite ce JSON vers
+  `staging.activities` (src/transform/activities.py). Le jour d'un branchement
+  sur la vraie API Strava, seule l'alimentation de `raw.activities` change ;
+  l'aplatissement et tout l'aval restent identiques.
+
 Pourquoi un générateur "intelligent" plutôt que random pur ?
 → Évite l'incohérence ("salarié escaladeur qui fait 12 km de course") qui
   rendrait le POC ridicule en soutenance.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import numpy as np
-import pandas as pd
 from faker import Faker
 from sqlalchemy import text
 
 from src.config import settings
-from src.load.db import get_engine, session_scope
+from src.load.db import session_scope
 from src.monitoring.metrics import step
+
+
+# Fuseau de l'entreprise (Lattes, FR). Sert à dériver start_date_local comme
+# le ferait l'API Strava (UTC + heure locale de l'athlète).
+PARIS_TZ = ZoneInfo("Europe/Paris")
+
+# Base d'identifiants pour ressembler aux grands id Strava (≈ 10^10).
+STRAVA_ID_BASE = 10_000_000_000
 
 
 # Profil de distribution par sport. Distance/durée échantillonnées par
@@ -61,6 +78,22 @@ SPORT_PROFILES: dict[str, SportProfile] = {
     "Yoga":           SportProfile("Yoga",           distance_mu=None,           duration_mu=8.0),
     "Crossfit":       SportProfile("Crossfit",       distance_mu=None,           duration_mu=8.0),
     "Marche":         SportProfile("Marche",         distance_mu=np.log(5000),   duration_mu=8.3),
+}
+
+
+# Mapping libellé FR → sport_type officiel de l'API Strava (anglais).
+# Le payload garde le `name` en FR (titre lisible) ET le sport_type Strava.
+SPORT_TO_STRAVA: dict[str, str] = {
+    "Tennis":         "Tennis",
+    "Course à pied":  "Run",
+    "Vélo":           "Ride",
+    "Randonnée":      "Hike",
+    "Natation":       "Swim",
+    "Football":       "Soccer",
+    "Escalade":       "RockClimbing",
+    "Yoga":           "Yoga",
+    "Crossfit":       "Crossfit",
+    "Marche":         "Walk",
 }
 
 
@@ -98,10 +131,36 @@ def _normalize_sport(label: str) -> Optional[str]:
     return synonyms.get(key)
 
 
-def generate_activities() -> pd.DataFrame:
-    """Génère le DataFrame d'activités sans l'insérer (pour tests)."""
+def _to_strava_payload(
+    activity_id: int,
+    emp_id: int,
+    sport: str,
+    dist_m: Optional[int],
+    elapsed_s: int,
+    moving_s: int,
+    start: datetime,
+) -> dict:
+    """Construit un enregistrement au format d'une activité de l'API Strava."""
+    start_local = start.astimezone(PARIS_TZ)
+    return {
+        "id": activity_id,
+        "athlete": {"id": int(emp_id)},
+        "name": sport,                                  # titre lisible (FR)
+        "type": SPORT_TO_STRAVA[sport],                 # catégorie (legacy Strava)
+        "sport_type": SPORT_TO_STRAVA[sport],           # sport_type Strava (EN)
+        "distance": dist_m,                             # mètres (None si non pertinent)
+        "moving_time": moving_s,                        # s, temps en mouvement
+        "elapsed_time": elapsed_s,                      # s, temps total écoulé
+        "start_date": start.isoformat().replace("+00:00", "Z"),
+        "start_date_local": start_local.isoformat(),
+        "timezone": "(GMT+01:00) Europe/Paris",
+        "comment": None,                                # rempli ci-dessous
+    }
+
+
+def generate_payloads() -> list[dict]:
+    """Génère la liste des payloads Strava-like sans les insérer (pour tests)."""
     rng = np.random.default_rng(settings.activities_seed)
-    fk = Faker("fr_FR")
     Faker.seed(settings.activities_seed)
 
     with session_scope() as s:
@@ -119,7 +178,6 @@ def generate_activities() -> pd.DataFrame:
         raise RuntimeError("Aucun (employee, sport) en staging — extract d'abord.")
 
     # Pré-calcul du nombre d'activités par salarié sur 12 mois.
-    # Poisson(mean=25) → la majorité entre 15 et 35.
     by_employee: dict[int, list[str]] = {}
     for emp_id, sport in rows:
         norm = _normalize_sport(sport)
@@ -130,21 +188,22 @@ def generate_activities() -> pd.DataFrame:
     now = datetime.now(tz=timezone.utc).replace(microsecond=0)
     one_year_ago = now - timedelta(days=365)
 
-    records: list[dict] = []
-    total_budget = settings.activities_total
-
-    # Stratégie : on tire un budget global, puis on le distribue
-    # proportionnellement aux salariés (Poisson autour de moyenne calibrée).
     employees = list(by_employee.keys())
+    total_budget = settings.activities_total
     mean_per_emp = max(5, total_budget // max(1, len(employees)))
     counts = rng.poisson(lam=mean_per_emp, size=len(employees))
+
+    payloads: list[dict] = []
+    activity_id = STRAVA_ID_BASE
 
     for emp_id, n_acts in zip(employees, counts):
         sports = by_employee[emp_id]
         for _ in range(int(n_acts)):
             sport = rng.choice(sports)
             profile = SPORT_PROFILES[sport]
-            dist_m, dur_s = profile.sample(rng)
+            dist_m, elapsed_s = profile.sample(rng)
+            # moving_time = temps écoulé MOINS les pauses → toujours <= elapsed.
+            moving_s = int(elapsed_s * rng.uniform(0.85, 0.97))
 
             # Date de début sur la fenêtre [now-365j, now-1j].
             offset_days = rng.uniform(0, 364)
@@ -152,58 +211,55 @@ def generate_activities() -> pd.DataFrame:
             # Heure : 60 % en matinée 6-10h, 40 % en soirée 17-21h.
             if rng.random() < 0.6:
                 start = start.replace(hour=int(rng.uniform(6, 10)),
-                                       minute=int(rng.uniform(0, 60)))
+                                      minute=int(rng.uniform(0, 60)))
             else:
                 start = start.replace(hour=int(rng.uniform(17, 21)),
-                                       minute=int(rng.uniform(0, 60)))
-            end = start + timedelta(seconds=dur_s)
-            # Garde-fou : aucune activité dans le futur (le replace d'heure
-            # peut faire dépasser `now` pour les dates proches d'aujourd'hui).
+                                      minute=int(rng.uniform(0, 60)))
+            # Garde-fou : aucune activité dans le futur (le replace d'heure peut
+            # faire dépasser `now` pour les dates proches d'aujourd'hui).
+            end = start + timedelta(seconds=elapsed_s)
             if end > now:
                 shift = end - now + timedelta(hours=1)
                 start -= shift
-                end -= shift
 
-            records.append(
-                {
-                    "id_employee": int(emp_id),
-                    "start_dt": start,
-                    "end_dt": end,
-                    "sport_type": profile.sport_label,
-                    "distance_m": dist_m,
-                    "comment": rng.choice(COMMENT_POOL),
-                }
+            activity_id += 1
+            payload = _to_strava_payload(
+                activity_id, int(emp_id), sport, dist_m, elapsed_s, moving_s, start
             )
+            payload["comment"] = rng.choice(COMMENT_POOL)
+            payloads.append(payload)
 
-    df = pd.DataFrame(records)
     # Tri chronologique → cohérent pour la lecture humaine et Slack.
-    df = df.sort_values("start_dt").reset_index(drop=True)
-    return df
+    payloads.sort(key=lambda p: p["start_date"])
+    return payloads
 
 
-def load_activities() -> None:
+def load_raw_activities() -> None:
+    """Génère les payloads Strava-like et les insère dans raw.activities."""
     with step("generate_activities") as ctx:
-        df = generate_activities()
-        ctx.rows_in = ctx.rows_out = len(df)
+        payloads = generate_payloads()
+        ctx.rows_in = ctx.rows_out = len(payloads)
 
-    with step("load_activities") as ctx:
-        # pandas met NaN (float) pour les distances absentes (Escalade, Tennis…).
-        # La colonne SQL est INT → il faut convertir NaN en None (= SQL NULL).
-        records = df.to_dict(orient="records")
-        for r in records:
-            if pd.isna(r["distance_m"]):
-                r["distance_m"] = None
-            else:
-                r["distance_m"] = int(r["distance_m"])
+    with step("load_raw_activities") as ctx:
+        records = [
+            {
+                "activity_id": p["id"],
+                "athlete_id": p["athlete"]["id"],
+                "payload": json.dumps(p, ensure_ascii=False),
+                "source": "strava_sim",
+            }
+            for p in payloads
+        ]
         with session_scope() as s:
-            s.execute(text("TRUNCATE staging.activities CASCADE"))
+            # CASCADE : staging.activities référence raw.activities (lignage).
+            s.execute(text("TRUNCATE raw.activities CASCADE"))
             s.execute(
                 text(
                     """
-                    INSERT INTO staging.activities
-                        (id_employee, start_dt, end_dt, sport_type, distance_m, comment)
+                    INSERT INTO raw.activities
+                        (activity_id, athlete_id, payload, source)
                     VALUES
-                        (:id_employee, :start_dt, :end_dt, :sport_type, :distance_m, :comment)
+                        (:activity_id, :athlete_id, CAST(:payload AS JSONB), :source)
                     """
                 ),
                 records,
@@ -212,6 +268,6 @@ def load_activities() -> None:
 
 
 if __name__ == "__main__":
-    load_activities()
-    print(f"OK — {settings.activities_total} activités générées (cible) "
-          f"avec seed={settings.activities_seed}")
+    load_raw_activities()
+    print(f"OK — {settings.activities_total} activités Strava-like générées (cible) "
+          f"dans raw.activities avec seed={settings.activities_seed}")

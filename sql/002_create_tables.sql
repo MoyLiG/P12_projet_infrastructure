@@ -32,6 +32,21 @@ CREATE TABLE IF NOT EXISTS raw.sports_xlsx (
   sport_pratique   TEXT
 );
 
+-- Activités simulées au format de l'API Strava. La couche raw stocke le
+-- payload JSON COMPLET tel qu'une source tierce le renverrait — jamais
+-- modifié. Le pipeline aplatit ensuite ce JSON vers staging.activities
+-- (cf. src/transform/activities.py). Le jour d'un branchement sur la vraie
+-- API Strava, seule la source d'alimentation de cette table change.
+-- NB : pas de BIGSERIAL ici — l'id vient du payload (comme un id Strava) et
+-- les grants ne couvrent pas les séquences du schéma raw.
+CREATE TABLE IF NOT EXISTS raw.activities (
+  activity_id   BIGINT PRIMARY KEY,           -- id "source" façon Strava
+  athlete_id    BIGINT NOT NULL,              -- = id_employee (dénormalisé)
+  payload       JSONB NOT NULL,               -- enregistrement complet API-like
+  source        TEXT NOT NULL DEFAULT 'strava_sim',
+  loaded_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ---------------------------------------------------------------------
 -- staging : typage strict + contraintes métier basiques.
 -- ---------------------------------------------------------------------
@@ -74,16 +89,22 @@ CREATE TABLE IF NOT EXISTS staging.sports_practice (
 
 CREATE TABLE IF NOT EXISTS staging.activities (
   id_activity     BIGSERIAL PRIMARY KEY,
+  -- Lignage : id de l'enregistrement source dans raw.activities.
+  source_activity_id BIGINT REFERENCES raw.activities(activity_id),
   id_employee     BIGINT NOT NULL REFERENCES staging.employees(id_employee),
   start_dt        TIMESTAMPTZ NOT NULL,
-  end_dt          TIMESTAMPTZ NOT NULL,
+  end_dt          TIMESTAMPTZ NOT NULL,     -- = start_dt + elapsed_time
   sport_type      TEXT NOT NULL,
   distance_m      INT,                    -- NULL autorisé (ex. escalade)
+  -- Temps en mouvement (Strava moving_time) : toujours <= temps écoulé
+  -- (elapsed_time = end_dt - start_dt). Distingue mouvement réel et pauses.
+  moving_time_s   INT CHECK (moving_time_s IS NULL OR moving_time_s >= 0),
   comment         TEXT,
   posted_to_slack BOOLEAN NOT NULL DEFAULT FALSE,
   loaded_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   CHECK (end_dt > start_dt),
-  CHECK (distance_m IS NULL OR distance_m >= 0)
+  CHECK (distance_m IS NULL OR distance_m >= 0),
+  CHECK (moving_time_s IS NULL OR moving_time_s <= EXTRACT(EPOCH FROM (end_dt - start_dt)))
 );
 
 CREATE INDEX IF NOT EXISTS idx_activities_employee ON staging.activities(id_employee);

@@ -54,6 +54,35 @@ et `docs/Le_Gall_Morgan_Option_B_rapport_062026.docx` (rapport projet).
 
 ---
 
+## Données simulées (façon API Strava)
+
+La note de cadrage demande de « créer automatiquement des données comme l'API
+Strava ». En attendant un branchement réel sur Strava (phase finale), le
+générateur produit dans **`raw.activities`** un payload JSON fidèle au modèle
+d'une activité Strava (`id`, `athlete`, `moving_time` ≠ `elapsed_time`,
+`start_date` / `start_date_local`…). Une étape d'ingestion
+(`src/transform/activities.py`) **aplatit** ensuite ce JSON vers le schéma
+métier imposé `staging.activities`.
+
+| Champ API Strava | Colonne `staging.activities` |
+|---|---|
+| `id` | `source_activity_id` (lignage) |
+| `athlete.id` | `id_employee` |
+| `start_date` | `start_dt` |
+| `start_date` + `elapsed_time` | `end_dt` |
+| `name` | `sport_type` (libellé FR) |
+| `distance` | `distance_m` (NULL si non pertinent) |
+| `moving_time` | `moving_time_s` |
+| `comment` | `comment` |
+
+Champs Strava riches (kudos, polyline, watts, fréquence cardiaque) **non
+simulés** : principe de minimisation des données (RGPD). Échantillon complet du
+contrat : `data/sample_strava_activity.json`. Le jour d'un branchement live,
+seule l'alimentation de `raw.activities` change — l'aplatissement et tout
+l'aval restent identiques.
+
+---
+
 ## Stack
 
 | Brique | Outil | Pourquoi |

@@ -5,8 +5,8 @@ Chaque check interroge la base après une étape du pipeline et lève une
 AssertionError si un invariant n'est pas tenu → la tâche Kestra passe en
 FAILED (visible rouge dans l'UI, et tracée dans audit.run_log via `step`).
 
-Inspiré du pattern P10 (tâches `test_*` intercalées), mais centralisé dans un
-module Python plutôt qu'en scripts inline dans le flow.
+Tâches `test_*` intercalées dans le flow, centralisées dans un module Python
+plutôt qu'en scripts inline.
 
 Usage :
     python -m src.validate.checks <nom_du_check>
@@ -41,11 +41,16 @@ def check_sports_practice_loaded() -> None:
 
 
 def check_activities_generated() -> None:
+    n_raw = _scalar("SELECT COUNT(*) FROM raw.activities")
+    assert n_raw >= 500, f"raw.activities = {n_raw} (< 500) — génération suspecte"
     n = _scalar("SELECT COUNT(*) FROM staging.activities")
-    assert n >= 500, f"staging.activities = {n} (< 500) — génération suspecte"
+    # L'aplatissement raw → staging doit être sans perte.
+    assert n == n_raw, (
+        f"aplatissement incomplet : staging.activities ({n}) != raw.activities ({n_raw})"
+    )
     future = _scalar("SELECT COUNT(*) FROM staging.activities WHERE start_dt > now()")
     assert future == 0, f"{future} activités datées dans le futur"
-    print(f"[TEST OK] staging.activities = {n}, 0 date dans le futur")
+    print(f"[TEST OK] raw={n_raw}, staging={n} (lossless), 0 date dans le futur")
 
 
 def check_advantages_computed() -> None:

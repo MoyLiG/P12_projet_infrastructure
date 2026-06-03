@@ -44,7 +44,8 @@ def _load_activities() -> pd.DataFrame:
         return pd.read_sql(
             text(
                 "SELECT id_activity, id_employee, start_dt, end_dt, "
-                "       sport_type, distance_m "
+                "       sport_type, distance_m, moving_time_s, "
+                "       EXTRACT(EPOCH FROM (end_dt - start_dt))::int AS elapsed_s "
                 "FROM staging.activities"
             ),
             s.connection(),
@@ -92,6 +93,14 @@ ACTIVITIES_EXPECTATIONS = [
     ),
     gxe.ExpectColumnValuesToNotBeNull(column="start_dt"),
     gxe.ExpectColumnValuesToNotBeNull(column="end_dt"),
+    # moving_time (temps en mouvement) toujours <= elapsed (temps écoulé) :
+    # invariant fondamental du modèle Strava qu'on simule.
+    gxe.ExpectColumnValuesToBeBetween(
+        column="moving_time_s", min_value=0, max_value=86_400, strict_max=False
+    ),
+    gxe.ExpectColumnPairValuesAToBeGreaterThanB(
+        column_A="elapsed_s", column_B="moving_time_s", or_equal=True
+    ),
     # Pas de date dans le futur — pour la cohérence du POC sur 12 mois passés.
     gxe.ExpectColumnMaxToBeBetween(
         column="start_dt",

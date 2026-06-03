@@ -97,10 +97,18 @@ tasks:
     commands:
       - cd /app && python -m src.validate.checks sports_practice_loaded
 
+  # Génère les activités au format API Strava dans la couche raw (payload JSON).
   - id: generate_activities
     type: io.kestra.plugin.scripts.python.Commands
     commands:
       - cd /app && python -m src.generate.activities
+
+  # Aplatit raw.activities (JSON Strava) → staging.activities (schéma métier).
+  # C'est l'étape d'ingestion : isole la source du modèle métier exploité.
+  - id: transform_activities
+    type: io.kestra.plugin.scripts.python.Commands
+    commands:
+      - cd /app && python -m src.transform.activities
 
   # Test visible : volumétrie d'activités générée + aucune date dans le futur.
   - id: test_activities_generated

@@ -62,5 +62,32 @@ sécurité à décider avant de toucher au pipeline déjà validé.
 
 ---
 
-## Review (à remplir en fin)
-_(résultats, chiffres POC avant/après, statut run Kestra)_
+## Review — FAIT le 2026-06-03
+
+### Chantier 1 — raw.activities ✅
+- `raw.activities (JSONB)` créée ; `staging.activities` + `source_activity_id`
+  (lignage) + `moving_time_s` + 2 CHECK (`>=0`, `<= elapsed`).
+- Générateur → payloads façon API Strava (athlete.id, sport_type EN,
+  moving_time ≠ elapsed_time, start_date/start_date_local) dans raw.
+- `src/transform/activities.py` : aplatissement SQL set-based raw → staging.
+- Flow Kestra : tâche `transform_activities` intercalée (generate → transform → test).
+- GE : expectation `elapsed >= moving_time` (paire de colonnes). README + dico
+  data + `data/sample_strava_activity.json` (mapping documenté).
+
+### Chantier 2 — Purge P10 ✅
+- Commentaires/journaux nettoyés : `checks.py`, `journal.md`, `lessons.md`.
+- « déjà mis en place en P10 » → justification technique de Kestra.
+- `build_pptx_p10style.py` → renommé `build_pptx_dark.py`, refs P10/BottleNeck
+  retirées ; ancien `.pptx p10style` régénéré en `_dark_` et supprimé.
+- Reste « P10 » uniquement dans ce todo.md (méta : décrit la purge elle-même).
+
+### Vérification
+- Tests : **25 passed** (22 unit + 3 intégration).
+- E2E Kestra (exec B0x9SCsVWxcsOjZr6JETc) : **SUCCESS 12/12 tâches**.
+- Données : raw=staging=3948 (lossless), 0 violation moving≤elapsed, lignage 100 %.
+- **Chiffres POC inchangés : 68 primes / 44 bien-être** (reproductibilité seed=42 OK).
+
+### Note infra
+Volume Postgres existant migré à chaud (DDL manuelle). Sur un reset propre
+(`docker compose down -v && up`), le script `sql/002` recrée tout — aucune
+migration séparée nécessaire.

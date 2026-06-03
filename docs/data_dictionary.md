@@ -28,6 +28,22 @@ introduit une régression.
 ### `raw.sports_xlsx`
 1000 lignes brutes — beaucoup de NULL sur `sport_pratique`.
 
+### `raw.activities`
+Activités sportives simulées au **format de l'API Strava**. La couche raw
+stocke le payload JSON complet, jamais modifié — le jour d'un branchement sur
+la vraie API Strava, seule l'alimentation de cette table change.
+
+| Colonne | Type | Description |
+|---|---|---|
+| `activity_id` | `BIGINT` PK | Id de l'activité (façon Strava, base ≈ 10¹⁰). |
+| `athlete_id` | `BIGINT` | = `id_employee` (dénormalisé pour lisibilité). |
+| `payload` | `JSONB` | Enregistrement complet : `id`, `athlete.id`, `name`, `type`, `sport_type`, `distance`, `moving_time`, `elapsed_time`, `start_date`, `start_date_local`, `timezone`, `comment`. |
+| `source` | `TEXT` | Origine du flux (`strava_sim`). |
+| `loaded_at` | `TIMESTAMPTZ` | Horodatage de chargement. |
+
+Aplati vers `staging.activities` par `src/transform/activities.py` (mapping
+documenté dans `data/sample_strava_activity.json`).
+
 ## Schéma `staging`
 
 Données typées + contraintes CHECK + clés étrangères. Première ligne de
@@ -44,9 +60,16 @@ défense qualité avant Great Expectations.
 Clé composite `(id_employee, sport_pratique)` — un salarié peut déclarer plusieurs sports.
 
 ### `staging.activities`
+Projection métier du payload `raw.activities` (schéma imposé par la note de
+cadrage + enrichissements).
 - `id_activity BIGSERIAL PRIMARY KEY`
+- `source_activity_id BIGINT` : lignage → `raw.activities.activity_id`.
+- `start_dt` / `end_dt` : `end_dt = start_dt + elapsed_time` (temps écoulé).
+- `distance_m INT` : NULL si non pertinent (escalade, yoga…).
+- `moving_time_s INT` : temps en mouvement Strava (toujours `<= elapsed`).
 - `posted_to_slack BOOLEAN` : flag d'idempotence pour Slack.
-- CHECKs : `end_dt > start_dt`, `distance_m IS NULL OR >= 0`.
+- CHECKs : `end_dt > start_dt`, `distance_m IS NULL OR >= 0`,
+  `moving_time_s <= EXTRACT(EPOCH FROM (end_dt - start_dt))`.
 - Index : `id_employee`, `start_dt`.
 
 ## Schéma `marts`

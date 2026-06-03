@@ -1,15 +1,14 @@
 """
-Variante "P10-style" du support de soutenance P12.
+Variante sombre (charcoal) du support de soutenance P12.
 
-Inspiré du deck BottleNeck (P10) : canvas charcoal sur TOUTES les slides,
-sections numérotées « 01 / », sommaire, valeurs chiffrées en mono. Palette
-HYBRIDE — emerald (identité sport de P12, accent principal) + violet (secondaire,
-repris de la charte P10). Polices Public Sans / JetBrains Mono de P10 non
-installées → fallback Segoe UI + Consolas (sûr sous Windows 11).
+Canvas charcoal sur TOUTES les slides, sections numérotées « 01 / », sommaire,
+valeurs chiffrées en mono. Palette HYBRIDE — emerald (identité sport de P12,
+accent principal) + violet (secondaire). Polices non installées → fallback
+Segoe UI + Consolas (sûr sous Windows 11).
 
 Ne remplace PAS docs/soutenance/build_pptx.py (le deck principal clair/sombre).
 
-Usage : python docs/soutenance/build_pptx_p10style.py
+Usage : python docs/soutenance/build_pptx_dark.py
 """
 from pathlib import Path
 
@@ -19,16 +18,16 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 
-OUT = Path(__file__).resolve().parent / "Le_Gall_Morgan_Option_B_1_support_p10style_062026.pptx"
+OUT = Path(__file__).resolve().parent / "Le_Gall_Morgan_Option_B_1_support_dark_062026.pptx"
 TOTAL = 22
 
-# ----- Palette (P10 dark + hybride emerald/violet) --------------------
+# ----- Palette (charcoal dark + hybride emerald/violet) ----------------
 BG       = RGBColor(0x0F, 0x11, 0x17)   # charcoal — fond de toutes les slides
 SURFACE  = RGBColor(0x16, 0x1D, 0x27)   # carte sur fond sombre
 SURFACE2 = RGBColor(0x1E, 0x27, 0x33)   # carte élevée / encart
 EMERALD  = RGBColor(0x10, 0xB9, 0x81)   # accent principal (sport)
 EMERALD_L= RGBColor(0x34, 0xD3, 0x99)   # accent clair
-VIOLET   = RGBColor(0x84, 0x05, 0xFF)   # secondaire (charte P10)
+VIOLET   = RGBColor(0x84, 0x05, 0xFF)   # secondaire
 VIOLET_L = RGBColor(0xA8, 0x55, 0xF7)   # valeurs en mono
 TXT      = RGBColor(0xF4, 0xF4, 0xF5)   # texte principal
 MUTED    = RGBColor(0x94, 0xA3, 0xB8)   # texte muté (slate)
@@ -168,7 +167,7 @@ textbox(s, 0.9, 3.9, 11, 0.7,
 textbox(s, 0.9, 5.5, 9, 1.2,
         [[R("Morgan Le Gall", 16, TXT, True)],
          [R("Juin 2026", 13, DIM, False, F_MONO)]], space_after=4)
-# chips stack (rappel P10)
+# chips stack
 textbox(s, 0.9, 6.55, 11, 0.3,
         [[R("Kestra   ", 11, EMERALD_L, True, F_MONO),
           R("PostgreSQL   ", 11, EMERALD_L, True, F_MONO),
