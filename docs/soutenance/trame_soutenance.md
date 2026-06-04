@@ -48,14 +48,16 @@ qu'on pourra rejouer si tu changes un paramètre. »
 
 ## Slide 4 — Architecture
 
-**[VISUEL]** Schéma du flux : Sources (XLSX RH + sport, générateur Strava-like) → PostgreSQL (raw/staging/marts) → validation géo + qualité → calcul → Slack + PowerBI. Kestra orchestre.
+**[VISUEL]** Schéma du flux : Sources (XLSX RH + sport, générateur façon API Strava) → PostgreSQL (raw : JSON Strava → staging → marts) → validation géo + qualité → calcul → Slack + PowerBI. Kestra orchestre.
 
 **[ORAL]**
 « Voici l'architecture. Trois sources : les fichiers RH, les pratiques
 sportives déclarées, et un générateur qui simule les données Strava sur 12
-mois — en attendant la vraie API. Tout est chargé dans PostgreSQL, structuré
-en trois couches. On valide, on calcule, et on restitue dans Slack et PowerBI.
-Le tout orchestré par Kestra, qui surveille chaque exécution. »
+mois — au format JSON de l'API réelle, en attendant le branchement live. Ce
+JSON atterrit dans la couche raw, puis une étape d'ingestion l'aplatit vers
+staging. Tout est dans PostgreSQL, structuré en trois couches. On valide, on
+calcule, et on restitue dans Slack et PowerBI. Le tout orchestré par Kestra,
+qui surveille chaque exécution. »
 
 ---
 
@@ -75,13 +77,14 @@ simulacre. »
 
 ## Slide 6 — Le pipeline étape par étape
 
-**[VISUEL]** 7 étapes numérotées : extract RH → extract sport → générer activités → valider géo → qualité GE → calculer avantages → notifier Slack.
+**[VISUEL]** 8 étapes numérotées : extract RH → extract sport → générer activités (raw : JSON Strava) → aplatir raw→staging → valider géo → qualité GE → calculer avantages → notifier Slack.
 
 **[ORAL]**
-« Le pipeline enchaîne sept étapes. Extraction, génération des activités,
-validation géographique, contrôle qualité, calcul des avantages, notification
-Slack. Si une étape échoue, le pipeline s'arrête et envoie une alerte — on ne
-calcule jamais sur des données douteuses. »
+« Le pipeline enchaîne huit étapes. Extraction, génération des activités au
+format Strava dans la couche raw, aplatissement vers staging, validation
+géographique, contrôle qualité, calcul des avantages, notification Slack. Si
+une étape échoue, le pipeline s'arrête et envoie une alerte — on ne calcule
+jamais sur des données douteuses. »
 
 ---
 
@@ -131,7 +134,7 @@ techniquement et pas seulement sur le papier. »
 
 ## Slide 10 — Monitoring & observabilité
 
-**[VISUEL]** Capture/maquette de l'UI Kestra (pipeline vert, 7 tâches SUCCESS) + table audit.run_log (volumétrie, durées par étape).
+**[VISUEL]** Capture/maquette de l'UI Kestra (pipeline vert, 12 tâches SUCCESS) + table audit.run_log (volumétrie, durées par étape).
 
 **[ORAL]**
 « Côté supervision, chaque exécution est tracée : volumétrie et durée par

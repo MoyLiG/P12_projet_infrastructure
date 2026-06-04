@@ -158,7 +158,8 @@ def build_document() -> Document:
 
     add_heading(doc, "Schémas PostgreSQL (pattern dbt-like)", 2)
     add_bullets(doc, [
-        "raw — copie 1:1 des XLSX. Jamais modifiée (audit trail).",
+        "raw — copie 1:1 des sources, jamais modifiée (audit trail) : XLSX RH/sport "
+        "+ activities (payload JSON façon API Strava).",
         "staging — typage strict + contraintes CHECK + clés étrangères.",
         "marts — tables consommées par PowerBI : eligibility_prime, eligibility_wellbeing, kpi_by_bu.",
         "audit — run_log (volumétrie/durée par étape) et eligibility_changes (traçabilité RGPD).",
@@ -167,10 +168,11 @@ def build_document() -> Document:
 
     add_heading(doc, "Flux du pipeline", 2)
     add_para(doc,
-        "Le flow Kestra enchaîne sept étapes : extraction RH, extraction sport, "
-        "génération des activités (Strava-like), validation géographique, validation "
-        "qualité Great Expectations, calcul des avantages, notification Slack. Une "
-        "défaillance à n'importe quelle étape interrompt le flow et déclenche une alerte mail.")
+        "Le flow Kestra enchaîne huit étapes : extraction RH, extraction sport, "
+        "génération des activités au format API Strava dans la couche raw, aplatissement "
+        "raw→staging, validation géographique, validation qualité Great Expectations, "
+        "calcul des avantages, notification Slack. Une défaillance à n'importe quelle "
+        "étape interrompt le flow et déclenche une alerte mail.")
 
     add_pagebreak(doc)
 
@@ -183,8 +185,10 @@ def build_document() -> Document:
         "Données+Sportive.xlsx (1000 lignes × 2 colonnes) — ID salarié, sport déclaré "
         "(nombreux NULL filtrés à l'extraction).",
         "Activités sportives — générées par src/generate/activities.py (Faker + numpy) "
-        "sur les 12 derniers mois, environ 4 000 lignes, cohérentes avec le sport "
-        "déclaré de chaque salarié.",
+        "au format de l'API Strava (moving_time ≠ elapsed_time, start_date locale) dans "
+        "raw.activities, puis aplaties vers staging.activities par "
+        "src/transform/activities.py. Environ 4 000 lignes sur 12 mois, cohérentes avec "
+        "le sport déclaré de chaque salarié.",
     ])
 
     add_heading(doc, "Données sensibles (PII)", 2)
@@ -211,7 +215,8 @@ def build_document() -> Document:
         "salaire_brut > 0, jours_cp >= 0.",
         "moyen_deplacement IN (enum fermé) — valeur inconnue → erreur immédiate.",
         "end_dt > start_dt, distance_m IS NULL OR distance_m >= 0.",
-        "Clés étrangères vérifiées (id_employee de staging.activities doit exister).",
+        "Clés étrangères vérifiées : id_employee de staging.activities, et "
+        "source_activity_id → raw.activities (lignage raw→staging).",
     ])
 
     add_heading(doc, "Ligne 2 — Great Expectations (avant calculs)", 2)
@@ -223,7 +228,7 @@ def build_document() -> Document:
         "Unicité de id_employee.",
         "salaire_brut ∈ [10k, 300k €].",
         "moyen_deplacement ∈ enum.",
-        "Dates d'activités non futures, distance ∈ [0, 200 km].",
+        "Dates d'activités non futures, distance ∈ [0, 200 km], moving_time ≤ elapsed_time.",
     ])
 
     add_heading(doc, "Ligne 3 — Validation métier géographique", 2)
@@ -316,7 +321,8 @@ def build_document() -> Document:
     ])
     add_heading(doc, "Scénario B — nouvelle activité en live", 2)
     add_bullets(doc, [
-        "INSERT manuel dans staging.activities (script ou SQL direct).",
+        "INSERT d'une activité (raw.activities puis transform, ou SQL direct en "
+        "staging pour la démo).",
         "Re-run de l'étape post_slack uniquement.",
         "Vérification : message reçu dans #sport-data + ligne visible dans "
         "PowerBI (page Détail Bien-être).",
@@ -328,7 +334,8 @@ def build_document() -> Document:
     add_heading(doc, "10. Limites et perspectives", 1)
     add_heading(doc, "Hors scope du POC", 2)
     add_bullets(doc, [
-        "Pas d'intégration vraie Strava (générateur Faker + numpy à la place).",
+        "Pas d'intégration live à l'API Strava (générateur produisant le format "
+        "Strava à la place).",
         "Pas de CI/CD (GitHub Actions est la prochaine étape).",
         "Pas de scale-out (Kubernetes, Spark) — surdimensionné pour 162 employés.",
     ])
