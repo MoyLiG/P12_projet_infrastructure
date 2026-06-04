@@ -1,0 +1,7 @@
+Projet P12 — POC Avantages Sportifs (Sport Data Solution)
+OpenClassrooms Data Engineer — Option B
+
+Dépôt GitHub :
+https://github.com/MoyLiG/P12_projet_infrastructure
+
+Branche : main
