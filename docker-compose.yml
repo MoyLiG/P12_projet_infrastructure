@@ -36,7 +36,7 @@ services:
     environment:
       POSTGRES_DB: kestra
       POSTGRES_USER: kestra
-      POSTGRES_PASSWORD: kestra
+      POSTGRES_PASSWORD: ${KESTRA_DB_PASSWORD}
     volumes:
       - kestra_db_data:/var/lib/postgresql/data
 
@@ -68,7 +68,7 @@ services:
             url: jdbc:postgresql://kestra-db:5432/kestra
             driverClassName: org.postgresql.Driver
             username: kestra
-            password: kestra
+            password: ${KESTRA_DB_PASSWORD}
         kestra:
           server:
             basicAuth:
