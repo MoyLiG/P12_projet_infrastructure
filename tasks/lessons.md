@@ -174,3 +174,95 @@ encore déclenché en conditions d'échec** (éviter de spammer la channel).
 quand tous les inputs ont des défauts. Un POST nu (ou JSON) renvoie
 **422 "Invalid entity"**. Côté `requests` : passer `files={"input": (None, "val")}`
 force le bon encodage. (Le PUT d'un flow, lui, prend bien `application/x-yaml`.)
+
+---
+
+## 2026-06-05 — Correction du script de démo soutenance (`scripts/demo.sh`)
+
+### a) Démo "activité live" : ne pas relancer le flow complet
+**Erreur** : le scénario B insérait une activité dans `staging.activities` puis
+faisait `POST /executions/{flow}` (= relance de TOUT le flow). Or
+`transform_activities` fait un **`TRUNCATE staging.activities`** avant de
+recharger depuis `raw` → l'activité insérée à la main était effacée avant
+d'atteindre l'étape Slack. La démo ne montrait rien (ou postait des activités
+au hasard, limitées par `slack_post_limit`).
+
+**Correction** : pour la notification d'une activité ajoutée à la main, jouer
+**uniquement** l'étape Slack (`python -m src.load.slack --limit 1`), pas le
+flow entier. `--limit 1` garantit qu'on poste la seule nouvelle activité
+(`start_dt = now()` → la plus récente, le module trie par `start_dt DESC`).
+
+**Règle** : avant de "rejouer le pipeline" sur une donnée injectée manuellement,
+vérifier qu'aucune étape amont ne fait un TRUNCATE/reload qui l'écrase. Cibler
+l'étape utile plutôt que relancer toute la chaîne.
+
+**Aussi** : lancer un module métier depuis le conteneur Kestra
+(`docker compose exec kestra python -m ...`) **ne marche pas** hors d'un run :
+les env vars métier (`POSTGRES_HOST=postgres`, webhook Slack) sont injectées par
+Kestra via `pluginDefaults.env` au moment d'une tâche, pas dans l'environnement
+du conteneur (et le `.env` n'y est pas monté). → lancer depuis le host (le
+`.env` y pointe `localhost:5432` + le vrai webhook).
+
+### b) Le venv du projet est `.venv`, pas `venv`
+**Erreur** : la détection du Python dans `demo.sh` testait `venv/Scripts/...` →
+jamais trouvé, fallback silencieux sur le `python` du PATH. Révélé en testant
+en live (`No such file or directory`).
+**Règle** : vérifier le nom réel du venv (`ls -d .venv venv 2>/dev/null`) avant
+de coder un chemin en dur. Ici c'est `.venv` (avec point).
+
+### c) Attente d'un run : poll de l'API plutôt que `sleep` fixe
+`sleep 30` après un trigger est fragile (run > 30 s → on lit des KPI
+incomplets). Remplacé par `wait_execution` qui poll
+`GET /api/v1/executions/{id}` → `.state.current` jusqu'à un état terminal
+(`SUCCESS`/`WARNING` = ok, `FAILED`/`KILLED` = stop) avec timeout de garde.
+Corollaire bash : une fonction qui doit renvoyer une valeur capturable
+(`id=$(trigger ...)`) doit envoyer ses logs sur **stderr** (`>&2`), sinon ils
+polluent la capture stdout.
+
+### d) `curl -F` (multipart) vs `-d` (urlencoded) — révélé en lançant le script
+**Erreur** : `trigger()` postait avec `curl -d "prime_rate=..."` (=
+`application/x-www-form-urlencoded`). L'API d'exécution Kestra exige du
+**multipart/form-data** → elle répond **415** (Unsupported Media Type), `curl -f`
+sort en erreur, et `set -euo pipefail` coupe le script juste après le `echo`,
+sans message lisible.
+**Correction** : `curl -F "prime_rate=$rate" -F "wellbeing_threshold=15"` (le
+`-F` force le multipart, curl gère le boundary). Cohérent avec la leçon API
+Kestra déjà notée (2026-06-03) — mais le script l'avait enfreinte.
+**Règle** : `curl -d` = urlencoded ; `curl -F` = multipart. Pour une API qui
+exige du multipart, c'est `-F` (ou en `requests` : `files={"x": (None, "v")}`).
+
+### e) `jq` absent en WSL — et le faux-bon réflexe du parsing grep
+**Erreur** : le script parsait le JSON de l'API avec `jq`. Présent en Git bash
+Windows (où les tests passaient) mais **absent de la distrib WSL nue** →
+`jq: command not found` le jour du test réel.
+**1re correction (MAUVAISE)** : helper `json_str` en `grep -o '"clé":"..."' |
+head -1`. Ça a introduit un bug pire (voir f) : un JSON à **clés répétées** ne
+se parse pas avec `head -1`.
+**Correction finale** : helper qui utilise `jq` si présent, **sinon `python3`**
+(stdlib `json`, présent par défaut sur Ubuntu/WSL) ; pré-check au démarrage qui
+échoue clair si aucun des deux. Parsing exact (`.state.current`), sans regex.
+**Règle** : un JSON non trivial se parse avec un **vrai parseur** (jq/python3),
+jamais avec grep/sed. Pour la portabilité, fallback `jq || python3` + message
+d'install (`sudo apt install -y jq`), pas un parseur maison fragile.
+
+### f) Parser un JSON à clés répétées avec `grep | head -1` → faux résultat
+**Erreur** : `wait_execution` annonçait `SUCCESS` en 2-4 s alors que le run
+durait ~20 s. La réponse `GET /executions/{id}` de Kestra contient **un
+`"current"` par tâche** (taskRunList) **plus** celui de l'exécution. `grep
+'"current"' | head -1` attrapait l'état de la **1re tâche** (`extract_rh`, finie
+en ~100 ms) → faux SUCCESS → le run suivant démarrait **en parallèle** →
+collision sur `generate_activities` → run 0.05 FAILED → `show_kpi` lisait une
+table en cours de remplissage → `(0 rows)`. Un seul bug en cause en apparence,
+trois symptômes.
+**Correction** : `jq -r '.state.current'` (ou l'équivalent python3) cible
+l'état **global** sans ambiguïté.
+**Règle** : dès qu'une clé peut apparaître plusieurs fois dans un JSON,
+`head -1`/`tail -1` est non déterministe — naviguer la structure (parseur),
+pas la sérialisation texte.
+**Validé** : run relancé → attente réelle 20 s, KPI `0.05 / 68 / 172 482,50 €`.
+
+### Méta-leçon
+Les pièges (a) → (e) ont **tous** été découverts en lançant le script pour de
+vrai depuis WSL, pas en le relisant. Confirme la règle d'or : un livrable n'est
+pas validé tant qu'il n'a pas tourné de bout en bout dans l'environnement cible
+(ici : WSL, pas Git bash Windows).
