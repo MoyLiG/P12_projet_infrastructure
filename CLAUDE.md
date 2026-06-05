@@ -82,3 +82,13 @@
 
 – Minimal Impact: Only touch what’s necessary
 
+
+
+\## Environnement
+
+– **Contrat d'exécution : Docker.** Toute la stack (Kestra, PostgreSQL, pipeline Python) tourne en conteneurs — host agnostique, reproductible.
+
+– **Dev recommandé : WSL2 / Linux.** Stack Python Linux-first ; lancer `pytest`, scripts `src/` et génération de données depuis un shell Linux. Venv `.venv` créé côté Linux.
+
+– Windows/PowerShell suffit pour piloter Docker, mais éviter d'exécuter le code Python hors conteneur depuis Windows pur.
+
