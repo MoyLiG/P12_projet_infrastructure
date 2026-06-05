@@ -6,6 +6,36 @@
 
 ---
 
+## Prérequis & environnement
+
+**Contrat d'exécution (le seul prérequis pour faire tourner le POC) : Docker.**
+Toute la stack (Kestra, PostgreSQL, le pipeline Python) tourne en conteneurs.
+N'importe quel OS muni de Docker + un shell exécute le projet à l'identique —
+c'est ce qui garantit la reproductibilité.
+
+- **Docker Desktop** (ou Docker Engine) avec `docker compose` v2
+- Un shell POSIX pour les commandes ci-dessous (bash, WSL, Git Bash, macOS/Linux)
+
+**Environnement de dev recommandé : WSL2 / Linux.** Tout ce qui s'exécute *hors
+conteneur* — tests `pytest`, scripts `src/`, génération de données — repose sur
+une stack Python Linux-first (pandas, SQLAlchemy, Faker, Great Expectations).
+Lancer ces outils depuis un shell Linux aligne le poste de dev sur les conteneurs
+et évite les pièges Windows (chemins, fins de ligne CRLF, encodages, deps natives
+type `psycopg`).
+
+```bash
+# venv créé côté Linux/WSL pour le dev hors conteneur
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pytest
+```
+
+> Windows pur (PowerShell) suffit pour piloter Docker, mais pour développer/tester
+> hors conteneur, passe par WSL2.
+
+---
+
 ## Quick start
 
 ```bash
@@ -122,6 +152,7 @@ P12/
 ├── scripts/              bootstrap.sh, demo.sh
 ├── data/                 raw/ (XLSX, git-ignored) + generated/ (CSV)
 ├── docker-compose.yml
+├── requirements.txt      Dépendances Python (dev hors conteneur)
 ├── journal.md            ← log chronologique du build
 └── README.md             ← ce fichier
 ```
