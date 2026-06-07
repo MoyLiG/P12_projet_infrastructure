@@ -1,0 +1,24 @@
+# Normalisation des fins de ligne — repo multi-OS (Windows + WSL/Linux + CI Docker)
+# Par défaut : git détecte le texte et le stocke/checkout en LF (cohérent Linux).
+* text=auto eol=lf
+
+# Scripts shell : LF obligatoire (un CRLF casse l'exécution sous bash/Docker).
+*.sh    text eol=lf
+
+# Scripts Windows : CRLF requis.
+*.ps1   text eol=crlf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Fichiers binaires : git ne tente aucune normalisation eol.
+*.pbix  binary
+*.xlsx  binary
+*.xls   binary
+*.pdf   binary
+*.docx  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.zip   binary
