@@ -34,6 +34,10 @@ pytest
 > Windows pur (PowerShell) suffit pour piloter Docker, mais pour développer/tester
 > hors conteneur, passe par WSL2.
 
+**VSCode (WSL)** : après création du venv, sélectionne l'interpréteur du projet
+via `Ctrl+Shift+P` → **Python: Select Interpreter** → `./.venv/bin/python`. Les
+terminaux intégrés activeront alors le venv automatiquement (préfixe `(.venv)`).
+
 ---
 
 ## Quick start
