@@ -1,3 +1,12 @@
+# --- Claude Code / outils IA (jamais dans le repo) ---
+CLAUDE.md
+.claude/
+tasks/
+
+# --- Docs de travail perso (hors livrable) ---
+Consignes_OC.txt
+journal.md
+
 # --- Secrets ---
 .env
 .env.local
