@@ -4,6 +4,8 @@
 > sportifs pour les salariés de Sport Data Solution (entreprise fictive).
 > Projet OpenClassrooms P12 — Data Engineer — **Option B**.
 
+🔗 **Dépôt GitHub** : https://github.com/MoyLiG/P12_projet_infrastructure
+
 ---
 
 ## Prérequis & environnement
@@ -83,8 +85,8 @@ le monitoring et `cache` pour les distances Google Maps.
                           audit.run_log              audit.eligibility_changes
 ```
 
-Détail des choix techniques : voir `journal.md` (log de bord chronologique)
-et `docs/Le_Gall_Morgan_Option_B_rapport_062026.docx` (rapport projet).
+Détail des choix techniques : voir
+`docs/Le_Gall_Morgan_Option_B_rapport_062026.docx` (rapport projet).
 
 ---
 
@@ -152,12 +154,11 @@ P12/
 ├── src/                  Pipeline Python (extract / generate / validate / transform / load)
 ├── tests/                Tests pytest
 ├── powerbi/              Dashboard .pbix
-├── docs/                 Rapport .docx, support PDF, diagrammes
+├── docs/                 Rapport .docx + soutenance/ (support .pptx)
 ├── scripts/              bootstrap.sh, demo.sh
 ├── data/                 raw/ (XLSX, git-ignored) + generated/ (CSV)
 ├── docker-compose.yml
 ├── requirements.txt      Dépendances Python (dev hors conteneur)
-├── journal.md            ← log chronologique du build
 └── README.md             ← ce fichier
 ```
 
@@ -165,7 +166,7 @@ P12/
 
 ## Livrables OpenClassrooms
 
-Voir `docs/` :
-- `Le_Gall_Morgan_Option_B_1_support_062026.pdf` — support de soutenance
+- `docs/soutenance/Le_Gall_Morgan_Option_B_1_support_062026.pptx` — support de soutenance
+- `docs/Le_Gall_Morgan_Option_B_rapport_062026.docx` — rapport projet
 - `Le_Gall_Morgan_Option_B_2_lien_062026.txt` — URL du repo GitHub
-- `powerbi/sport_advantages.pbix` — dashboard PowerBI
+- `powerbi/Le_Gall_Morgan_Option_B_3_pbix_062026.pbix` — dashboard PowerBI

@@ -7,6 +7,10 @@ tasks/
 Consignes_OC.txt
 journal.md
 
+# --- Supports de cours OC (hors repo, ancres a la racine) ---
+/Soutenance/
+/Gerez_un_projet_d_infrastructure/
+
 # --- Secrets ---
 .env
 .env.local
