@@ -11,6 +11,9 @@ journal.md
 /Soutenance/
 /Gerez_un_projet_d_infrastructure/
 
+# --- Archives livrables (jamais sur le repo) ---
+*.zip
+
 # --- Secrets ---
 .env
 .env.local
