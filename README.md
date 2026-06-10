@@ -85,8 +85,8 @@ le monitoring et `cache` pour les distances Google Maps.
                           audit.run_log              audit.eligibility_changes
 ```
 
-Détail des choix techniques : voir
-`docs/Le_Gall_Morgan_Option_B_rapport_062026.docx` (rapport projet).
+Détail des choix techniques : voir `docs/data_dictionary.md` (dictionnaire de
+données). Le rapport projet complet est remis sur OpenClassrooms (non versionné ici).
 
 ---
 
@@ -154,7 +154,7 @@ P12/
 ├── src/                  Pipeline Python (extract / generate / validate / transform / load)
 ├── tests/                Tests pytest
 ├── powerbi/              Dashboard .pbix
-├── docs/                 Rapport .docx + soutenance/ (support .pptx)
+├── docs/                 data_dictionary.md (dictionnaire de données)
 ├── scripts/              bootstrap.sh, demo.sh
 ├── data/                 raw/ (XLSX, git-ignored) + generated/ (CSV)
 ├── docker-compose.yml
@@ -166,7 +166,9 @@ P12/
 
 ## Livrables OpenClassrooms
 
-- `docs/soutenance/Le_Gall_Morgan_Option_B_1_support_062026.pptx` — support de soutenance
-- `docs/Le_Gall_Morgan_Option_B_rapport_062026.docx` — rapport projet
-- `Le_Gall_Morgan_Option_B_2_lien_062026.txt` — URL du repo GitHub
+Le **support de soutenance** et le **rapport projet** sont remis directement sur
+la plateforme OpenClassrooms — ils ne sont pas versionnés dans ce repo.
+
+Présents dans le repo :
+- `Le_Gall_Morgan_Option_B_2_lien_062026.txt` — URL de ce dépôt GitHub
 - `powerbi/Le_Gall_Morgan_Option_B_3_pbix_062026.pbix` — dashboard PowerBI
