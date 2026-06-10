@@ -94,4 +94,4 @@ Puis **Charger**.
 ## 6. Export du livrable
 
 `Fichier → Exporter → PDF` pour le dépôt, et sauvegarder le `.pbix` sous
-`powerbi/Le_Gall_Morgan_Option_B_3_pbix_062026.pbix`.
+`powerbi/Le_Gall_Morgan_Option_B_2_pbix_062026.pbix`.
