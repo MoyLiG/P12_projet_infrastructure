@@ -48,9 +48,15 @@ Puis **Charger**.
 - **Anneau** `v_activities_by_sport` : légende = sport, valeur = nb_activites.
 
 ### Page 2 — Détail Prime
-- **Table** `v_prime_detail` : employee_hash, bu, tranche_salaire,
+- **Table** `v_prime_detail` : **id_salarie**, bu, tranche_salaire,
   moyen_deplacement, eligible, montant_prime_eur, motif.
 - **Segment** (filtre) sur `bu` et sur `eligible`.
+
+> `id_salarie` est l'**ID salarié RH** et l'unique identifiant de la table :
+> clé d'identification dont les RH ont besoin pour verser la prime. C'est un
+> identifiant interne pseudonyme — opaque pour un analyste non-RH, et que seul
+> le service RH peut relier à un nom + IBAN via sa table de correspondance. Pas
+> de hash redondant ; le salaire exact reste hors du dashboard (minimisation RGPD).
 
 ### Page 3 — Détail Bien-être
 - **Histogramme** distribution `nb_activites` (depuis `v_wellbeing_detail`).

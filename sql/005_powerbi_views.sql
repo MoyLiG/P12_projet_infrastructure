@@ -31,10 +31,15 @@ WHERE start_dt >= now() - INTERVAL '365 days'
 GROUP BY sport_type
 ORDER BY nb_activites DESC;
 
--- 3. Détail prime (sans PII) : 1 ligne / salarié.
+-- 3. Détail prime : 1 ligne / salarié.
+--    `id_salarie` (= ID salarié RH) est l'unique identifiant exposé : un
+--    pseudonyme interne, opaque pour un analyste non-RH, mais que le seul
+--    service RH peut relier à un nom + IBAN (via la table de correspondance
+--    source Données+RH.xlsx) pour verser la prime. Pas de hash redondant ici
+--    (minimisation RGPD) ; nom/prénom/salaire exact restent hors BI.
 CREATE OR REPLACE VIEW marts.v_prime_detail AS
 SELECT
-    es.employee_hash,
+    es.id_employee                AS id_salarie,
     es.bu,
     es.salary_band                AS tranche_salaire,
     es.moyen_deplacement,
@@ -46,10 +51,12 @@ SELECT
 FROM marts.employees_safe es
 JOIN marts.eligibility_prime ep ON ep.id_employee = es.id_employee;
 
--- 4. Détail bien-être (sans PII) : 1 ligne / salarié.
+-- 4. Détail bien-être : 1 ligne / salarié.
+--    Même logique que v_prime_detail : `id_salarie` seul = clé RH ré-identifiable
+--    par le seul service habilité (pour l'octroi des jours bien-être).
 CREATE OR REPLACE VIEW marts.v_wellbeing_detail AS
 SELECT
-    es.employee_hash,
+    es.id_employee                AS id_salarie,
     es.bu,
     ew.activity_count             AS nb_activites,
     ew.threshold                  AS seuil,

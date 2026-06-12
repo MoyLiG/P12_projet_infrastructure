@@ -138,7 +138,13 @@ l'aval restent identiques.
 - `.env` jamais versionné — `.env.example` contient des placeholders.
 - 3 rôles PG : `etl_writer` (R/W pipeline), `analyst_reader` / `powerbi_reader`
   (read marts only — **pas d'accès aux PII**).
-- Pseudonymisation : les analystes voient `hash(nom+prénom+salt)`, pas les noms.
+- Pseudonymisation : les analystes voient `hash(nom+prénom+salt)` (via
+  `employees_safe`), jamais les noms.
+- Vues RH (prime / bien-être) : seul identifiant exposé = `id_salarie`
+  (ID salarié RH), un pseudonyme interne ré-identifiable par le seul service RH
+  via la table de correspondance source — nécessaire au versement des primes et
+  à l'octroi des jours bien-être. Pas de hash redondant, nom/prénom/salaire exact
+  restent hors BI (minimisation RGPD).
 - Row Level Security activée sur `staging.employees`.
 - Triggers d'audit sur `marts.eligibility_*` → `audit.eligibility_changes`.
 - Inserts SQL paramétrés (SQLAlchemy) — pas de string formatting.
