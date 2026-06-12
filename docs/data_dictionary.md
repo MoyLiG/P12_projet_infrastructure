@@ -94,9 +94,20 @@ Agrégat par BU : `nb_employees`, `nb_eligible_prime`, `nb_eligible_wellbeing`,
 
 ### `marts.employees_safe` (vue, pseudonymisée)
 Exposée aux analystes :
+- `id_employee` (= ID salarié RH) : identifiant interne **pseudonyme**, pas une
+  donnée directement identifiante. Réservé à la ré-identification par le seul
+  service RH (qui détient la table de correspondance source).
 - `employee_hash` (pas `nom`/`prenom`)
 - `salary_band` (tranches `< 30k` / `30-50k` / `50-80k` / `> 80k`, pas la valeur exacte)
 - Les autres champs non-PII.
+
+### `marts.v_prime_detail` / `marts.v_wellbeing_detail` (vues BI)
+Détail par salarié servant les pages PowerBI. `id_salarie`
+(= `employees_safe.id_employee`) y est l'**unique identifiant**, exposé comme
+**clé d'identification pour les RH** : indispensable au versement des primes /
+octroi des jours bien-être. Pas de `employee_hash` dans ces vues (redondant avec
+`id_salarie` — minimisation RGPD). Le nom, le prénom et le salaire exact restent
+hors de ces vues ; la ré-identification passe par la table de correspondance RH.
 
 ## Schéma `audit`
 
