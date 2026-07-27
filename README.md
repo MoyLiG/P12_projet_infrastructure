@@ -90,6 +90,33 @@ données). Le rapport projet complet est remis sur OpenClassrooms (non versionn�
 
 ---
 
+## Résultats
+
+![Résultats du POC : 172 482 euros de coût annuel de la prime, 68 salariés éligibles sur 161, aucune déclaration suspecte, 44 éligibles bien-être, 220 jours bien-être accordés, 3 948 activités analysées](docs/slides/resultats.png)
+
+Sur les **161 salariés** du jeu RH et **3 948 activités** analysées :
+
+| | Valeur |
+|---|---|
+| Coût annuel de la prime | **172 482 €** |
+| Éligibles à la prime | **68 / 161** |
+| Éligibles bien-être | **44** |
+| Jours bien-être accordés | **220** |
+| Déclarations suspectes | **0** |
+
+Tous ces chiffres se recalculent en une exécution si le taux de prime change —
+c'est l'intérêt d'avoir la règle dans le pipeline plutôt que dans un tableur.
+
+### Traçabilité des exécutions
+
+![Monitoring : dernier run Kestra en SUCCESS, 12 tâches sur 12 en environ 20 secondes, avec un extrait de la table audit.run_log détaillant le nombre de lignes par étape](docs/slides/monitoring.png)
+
+Chaque exécution écrit dans `audit.run_log` : volumétrie et durée par étape,
+statut, `run_id`. Un échec déclenche une alerte Slack, et le run reste rejouable
+depuis l'interface Kestra.
+
+---
+
 ## Données simulées (façon API Strava)
 
 La note de cadrage demande de « créer automatiquement des données comme l'API
@@ -149,6 +176,31 @@ l'aval restent identiques.
 - Triggers d'audit sur `marts.eligibility_*` → `audit.eligibility_changes`.
 - Inserts SQL paramétrés (SQLAlchemy) — pas de string formatting.
 
+### Le cycle de vie d'une donnée RH
+
+![Cycle de vie d'une donnée personnelle : en RAW le nom, le salaire et l'adresse sont en clair et seul le pipeline y accède ; en STAGING les PII sont typées et hashées, cloisonnées par Row Level Security ; en MARTS il ne reste que le hash et une tranche de salaire, seule couche lue par PowerBI](docs/slides/donnees-personnelles.png)
+
+La même donnée, trois niveaux d'exposition. `etl_writer` écrit sur toute la
+chaîne — c'est lui qui alimente la couche de restitution ; `analyst_reader` et
+`powerbi_reader` ne lisent que `marts`, qui ne contient **aucune PII**. Concrètement,
+`Le Gall · 42 000 € · Lattes` devient `a3f9c2… · BU Tech · 40-50 k€` côté BI.
+
+---
+
+## Industrialisation
+
+**Déjà en place :**
+
+- **Reproductible** — stack conteneurisée, démarrage en une commande.
+- **Idempotent** — rejouable sans doublons (Slack, calculs).
+- **Observable** — tests visibles, alerte Slack, rapport Great Expectations exporté.
+
+**Prochaines étapes pour un passage en production :**
+
+- **API Strava réelle** — remplacer le générateur par les vraies données.
+- **CI/CD** — tests et audit de sécurité à chaque commit.
+- **Secret manager** — rotation des secrets en production.
+
 ---
 
 ## Structure du repo
@@ -172,9 +224,12 @@ P12/
 
 ## Livrables OpenClassrooms
 
-Le **support de soutenance** et le **rapport projet** sont remis directement sur
-la plateforme OpenClassrooms — ils ne sont pas versionnés dans ce repo.
+Le **rapport projet** est remis directement sur la plateforme OpenClassrooms —
+il n'est pas versionné ici.
 
 Présents dans le repo :
+- `docs/Le_Gall_Morgan_Option_B_1_support_062026.pdf` — support de soutenance
+  (116 pages, rendu directement par GitHub)
 - `Le_Gall_Morgan_Option_B_3_lien_062026.txt` — URL de ce dépôt GitHub
 - `powerbi/Le_Gall_Morgan_Option_B_2_pbix_062026.pbix` — dashboard PowerBI
+- `docs/data_dictionary.md` — dictionnaire de données
