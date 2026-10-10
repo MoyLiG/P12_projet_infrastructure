@@ -20,7 +20,7 @@ great-expectations==1.2.4
 
 # --- Géo ---
 googlemaps==4.10.0
-geopy==2.4.1                # fallback haversine
+geopy==2.5.0                # fallback haversine
 
 # --- HTTP ---
 requests==2.33.0            # corrige CVE-2024-47081 + CVE-2026-25645
